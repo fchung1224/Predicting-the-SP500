@@ -1,0 +1,305 @@
+---
+title: "Forecasting the S&P500 Index Using the ARIMA Model"
+author: "Doan Khanh (DK), Kar Yan Ong, and Federico Chung"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document: default
+  pdf_document: default
+bibliography: Library.bib
+abstract: "The work presented in this research is a contribution to modelling and forecasting the S&P 500, the financial health indicator for US Markets, by using time series approach. Using ARIMA models, our study predicted and estimated a slight linear increase of S&P 500 values over the following 90 day period. The limitions of the use of historical demand data to forecast the future value of the S&P500 due to the lack of discernable patterns in trend and seasonality are addressed in this research paper. The results can contribute to the existing estimates of future S&P 500 values."
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(lubridate)
+library(stringr)
+library(ggplot2)
+library(astsa)
+library(splines)
+library(tidyr)
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warnings=FALSE)
+```
+
+
+## I. Introduction
+
+Predicting the stock market has been an important topic for both academia and the financial industry for many decades now. In recent years, the importance and value of stock's price history have reached enormous proportions in assisting and understanding the behavior of its future prices. Mainly, forecasting the S&P 500 Index has been of interest since its inception to several parties both inside and outside the financial world. 
+
+Forecasting the S&P 500 level is a critical analysis tool for both investors and economists. From an investor's perspective, the Standard & Poor's 500 Index is one of the most influential indices in the world. From an economist's view, the index is a broad indicator of the U.S. economy, in some instances, a global economic indicator as well.
+
+There have been a considerable amount of studies trying to explore the future value of the S&P 500 Index. Due to the complexity and interest of this topic, the research approaches can be categorized into two main techniques: time series analysis and artificial neural network. According to [@khashei2009improvement], Artificial neural networks (ANNs) are soft computing technique that is widely used as forecasting models in many areas, including social, engineering, economic, business, finance, foreign exchange, and stock problems. [@yoon1991predicting]Youngohc Yoon and George Swales in 1991 demonstrated that the neural network approach is capable of learning a function that maps inputs to output and encoding it in magnitudes of the weights in the network connection. It is indicated that the Neural Network approach can significantly improve the predictability of stock price performance. On the other hand, the ARIMA model, also known as the Box-Jenkins model or methodology, is commonly used in analysis and forecasting [@khashei2009improvement]. It is widely regarded as the most efficient forecasting technique in social science and is used extensively for time series.
+ 
+This study aims to forecast the S&P 500 Index in the following three months by using the ARIMA model. In order to achieve this goal, we use the historical data of the S&P 500 Index from 01/03/2000 to 09/27/2019. Several ARIMA models were developed and evaluated by Akaike Information Criteria (AIC) and Bayesian Information Criteria (BIC). The rest of the study is organized as follows: Section 2 & 3 review relevant literatures and methodologies used in this study. Section 4 presents and discusses the results obtained in this study, while limitations and conclusions are provided in sections 5 and 6. 
+
+## II. Literature Review
+
+The autoregressive model is based on the idea that the current value of the series: xt is explained as a function of p past values, $$x_{t-1},x_{t-1},...x_{t-p}$$ where p is the number of steps into the past needed to forecast current value of the series.
+$$x_{t}=\delta+\phi_{1}X_{t-1}+\phi_{1}X_{t-2}+.......+\phi_{p}X_{t-p}+W_{t}$$
+
+where $$W_{t}$$ is independent Gaussian white noise
+
+A moving average model of order q or MA(q) is defined to be 
+$$x_{t}=\delta+W_{t}+\theta_{1}W_{t-1}+\theta_{1}W_{t-2}+.......+\theta_{q}W_{t-q}$$
+
+where $$W_{t}$$ is independent Gaussian white noise
+
+The ARMA model is a combination of the AR and MA model. The ARMA(p,q) is written as 
+
+$$x_{t}=\delta+\phi_{1}X_{t-1}+\phi_{1}X_{t-2}+.......+\phi_{p}X_{t-p}+W_{t}+W_{t}+\theta_{1}W_{t-1}+\theta_{1}W_{t-2}+.......+\theta_{q}W_{t-q}$$
+
+where $$W_{t}$$ is independent Gaussian white noise
+
+
+We referenced some blogs performing time series analysis on the S&P500 Stock Index. One such study was from Paul Eulogio[@eulogio]. He used 21 years (1995-2015) of S&P 500 Stock Index data at a monthly frequency (a total of 252 observations) from Yahoo Finance and the Adjusted Close for analysis. Through the Augmented Dickey-Fuller Test, he found that the data was non-stationary and first differenced the data to make it stationary. After taking a look at the ACF and PACF of the differenced data, he decided that ARIMA(0,1,1) was best. 
+
+Ionides[@oonides] used the daily S&P500 data from 2013-03-05 to 2018-03-02. Then, he took differences for log transformation of the Adjusted Close prices for S&P500 to get the log returns for the stock to eliminate the non stationary characteristics. After that, by AIC criteria, he chose to fit ARMA(1,1) model for log returns. He then used ARIMA(1,1) model for the weekly S&P500 log returns and found that the residuals performed better but was a less accurate model.
+
+## III. Methods
+
+### Data & Variable of Interest
+S&P data was collected using the Yahoo Finance database. The S&P 500 dataset includes daily data on  Adjusted Close, opening and closing values and the trade volume for every day the stock market was open since “03/01/2000” (3rd of January, 2000). We used the Adjusted Close value of the S&P 500 because it reflects the true value of the S&P 500.  [^1]  The Adjusted Close value adjusts for corporate actions, such as dividends, that affect the true value of a stock. If we had not used the S&P 500 but looked at the stock price of any publicly traded stock we would use the Adjusted Close value because it adjusts for historical differences in corporate actions, and it can be used to examine historical returns as it provides an accurate representation of the real equity value over time.
+
+Unlike normal publicly traded stocks, the S&P 500 is not traded it is a benchmark index that helps investors understand the health of the US economy. The index accounts for 80% of all US market capitalization. The S&P 500 value is calculated by adding the price of all 500 companies that encompass it weighted by their market capitalization [^2]. This means that fluctuations in the stock price of companies with higher market capitalization have a more significant effect on the S&P 500 compared to fluctuations in the stock price of companies with low market capitalization[^3]. 
+
+Time series is one of four ways to forecast the value of the S&P 500. In essence, time-series use historical data to forecast the future, in this case, the value of the S&P 500. “Time series analysis is founded on the hypothesis that the future is an expansion of the past.” (Forecasting of demand using ARIMA model, Paper 6) This doesn’t mean that time series models can predict the future value of the S&P 500, it is just saying that using the information of the past we can use time series analysis to make an inference of how the future might look like.
+
+[^1]: We use the Adjusted Close value of the S&P 500, but because the S&P is just an index and not a firm, the Adjusted Close value and the Close value of the index are the same.
+[^2]: market value of a publicly-traded company's outstanding shares
+[^3]: For example, fluctuations in the stock price of the company with the highest market capitalization will have the biggest effect on the value of the S&P 500. 
+
+The S&P 500 data has time discontinuity, to fix the discontinuity in the data we fill the missing values in our data using random values with mean 1 and standard deviation of 5. This process is necessary so that we could have continuity in our values without having to have problems when measuring our errors. The missing values just can't be filled up using the previous value of the S&P 500 or 0, limitations of this method will be further discussed at the end of this paper. 
+
+### Statistical Methods
+
+After fixing time discontinuity, our goal is to be able to produce some kind of white noise or stationarity in the errors. To do so we will try to capture the trend of the S&P 500. There are many possible routes to capture the trend but given the non-parametric relationship between the value of the S&P 500 and time, we will try to capture the trend of the data using non-parametric models such as Splines, Loess, etc. After choosing a model that best captures the trend, we will remove the trend from the S&P500 Adjusted Close. In other words, we will examine the residuals of the model that captured the trend and use them to find any seasonal trends in the data. 
+
+After capturing both the trend and all possible seasonalities of the data, we will hopefully have errors that resemble at least weak stationarity, with a mean of 0. We will then use the Auto-Correlated Functions (ACF) and Partial Auto-Correlated Functions (PACF), to evaluate possible models that can best model the errors. Ideally, we will look for a model that suggests normality of standard residuals, and has high p-values for Ljung-Box statistic that suggests the errors are independent of each other. 
+
+## IV. Results and discussions
+
+We start by estimating the trend and seasonality as the initial preprocessing of the data to make errors stationary. Looking at the first visualization, we notice that the S&P 500 is highly volatile, going up and down across times (similar to other stocks, indexes). However, there has been a high return from 2000 to 2019. We also observe two big drops due to recessions in 2003 and 2009. From the second visualization, it is not clear of an increasing trend throughout four quarters of each year. It seems that the third quarter tends to perform the best.
+
+```{r results = "hide", echo=FALSE}
+#Loading in Data
+SP500 <- read.csv('SP500_daily.csv')
+SP500 <- SP500 %>%
+  mutate(Date = as.Date(Date))
+
+SP500 <- SP500 %>%
+  mutate(Monthday = mday(Date),
+         Yearday = yday(Date),
+         Weekday = wday(Date),
+         Quarter = quarter(Date))
+
+SP500 <- SP500 %>%
+  mutate(Date = as.Date(Date)) %>%
+  mutate(Month = month(Date), Year = year(Date), Day = day(Date))
+
+# First plot of visualization
+
+SP500_data <- ts(SP500$Adj.Close, start = c(2000,01,03), frequency = 261)
+plot(SP500_data, main="Figure 1: S&P 500 Index from 2000 to 2019", xlab = "Year", ylab="Adjusted Close Price")
+
+# Second plot of visualization
+
+A <- ggplot(SP500, aes(x=Yearday, y = Adj.Close, color = factor(Quarter), group = factor(Year))) + geom_line() 
+
+A + labs(title  = "Figure 2: S&P 500 Index by quarter in each year from 2000 to 2019", x = "Day of the year", y = "Adjusted Close Price", color = "Quarter") 
+```
+
+```{r results = "hide", echo=FALSE}
+#Cleaning Data
+
+#Specify the begining and ending date in the data 
+date_begin <- as.Date("2000/01/03", tryFormats = c("%Y/%m/%d"))
+date_end <- as.Date("2019/09/27", tryFormats = c("%Y/%m/%d"))
+
+SP500 <-
+  SP500%>%
+  complete(Date = seq.Date(date_begin, date_end, by="day"))
+
+#Specify Year, Month, Date into 3 new columns
+SP500<-
+  SP500%>%
+  mutate(Month = month(Date), Year = year(Date), Day = day(Date))
+
+#Identify yday, quarter, week of the year, weekdays & weekends (1 & 7 as Sun, Sat), Open = 1 for weekdays
+
+SP500 <- SP500 %>%
+  mutate(Yearday = yday(Date),
+         Quarter = quarter(Date),
+         Week = week(Date), Open = ifelse(is.na(Adj.Close),0,1), Weekday  = wday(Date))
+
+# Transform to decimal date, specify Adj.Close for weekends by rnorm (random)
+SP500<-
+  SP500 %>%
+  mutate(dec_date = Year + Yearday/365, Adj.Close = ifelse(is.na(Adj.Close),rnorm(1,sd = 5),Adj.Close))
+
+```
+
+After having tried Loess, Moving Average, and Splines method to estimate the trend, we believe that the Splines function is better at predicting the trend of the dataset. Using Splines degree 1 allows us to fit piecewise polynomials. In order to capture the trend accurately, we also specified the knots at specific periods when there were significant changes in the index. The dates identified as outliers are “2002-6-28”, “2017-10-9”, “2009-3-9”, “2015-3-16”. As we can observe from Figure 3, the S&P 500 index experienced significant drops in 2002 and 2009 due to the financial crisis. The splines method also captures the longest bull market in U.S. history from 2009 until the present. 
+
+```{r results = "hide"}
+# Specify dates as knots for Splines 
+
+date1<- yday(as.Date("2002-6-28", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2002-6-28", tryFormats = c("%Y-%m-%d")))
+
+date2<- yday(as.Date("2007-10-9", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2007-10-9", tryFormats = c("%Y-%m-%d")))
+
+date3<- yday(as.Date("2009-3-9", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2009-3-9", tryFormats = c("%Y-%m-%d")))
+
+date4<- yday(as.Date("2015-3-16", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2015-3-16", tryFormats = c("%Y-%m-%d")))
+```
+
+```{r results = "hide"}
+#Justify ranges to identify outlier dates
+
+outlier_date1<- yday(as.Date("2002-07-23", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2002-07-23", tryFormats = c("%Y-%m-%d")))
+
+outlier_date2<- yday(as.Date("2002-10-07", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2002-10-07", tryFormats = c("%Y-%m-%d"))) #range
+
+outlier_date3<- yday(as.Date("2002-10-09", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2002-10-09", tryFormats = c("%Y-%m-%d"))) #range
+
+outlier_date4<- yday(as.Date("2009-02-17", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2009-02-17", tryFormats = c("%Y-%m-%d"))) #range
+
+outlier_date5<- yday(as.Date("2009-03-31", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2009-03-31", tryFormats = c("%Y-%m-%d"))) #range
+
+outlier_date6<- yday(as.Date("2018-12-24", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2018-12-24", tryFormats = c("%Y-%m-%d"))) #range
+
+outlier_date7<- yday(as.Date("2018-12-25", tryFormats = c("%Y-%m-%d")))/365 + year(as.Date("2018-12-25", tryFormats = c("%Y-%m-%d"))) #range
+```
+
+
+```{r results = "hide"}
+#Identify outliers 
+SP500 <- SP500 %>%
+  mutate(outlier1 = dec_date ==outlier_date1,
+         outlier2 = dec_date > outlier_date2 & dec_date < outlier_date3 ,
+         outlier3 = dec_date > outlier_date4 & dec_date < outlier_date5 ,
+         outlier4 = dec_date > outlier_date6 & dec_date < outlier_date7) 
+```
+
+```{r results = "hide", echo=FALSE}
+#SPLINES
+SP500_SPLINES <-  SP500 %>% 
+  lm(Adj.Close ~ Open + bs(dec_date, degree = 1, knots = c(date1, date2, date3, date4)):Open +
+       outlier1:Open + outlier2:Open+ outlier3:Open + outlier4:Open, data = .)
+
+#Plot Splines
+ggplot(SP500) +
+  geom_point(aes(x=Date, y = predict(SP500_SPLINES)), color='red')+
+  geom_point(aes(x = Date, y = Adj.Close)) +
+  labs(title  = "Figure 3: Using Splines method to capture the trend", x = "Year", y = "Adjusted Close Price")
+
+```
+
+
+After estimating the trend with the Splines method, we have the new detrended data to capture the seasonality. Due to the volatility nature of the financial data, there was no clear seasonality that we could capture within the S&P 500 dataset. Having tried to observe yearly, monthly, weekly, and daily seasonality, we noticed that there is high variability within the visualizations. However, after discussing with Professor Brianna, we realized that the weekly seasonality was the best candidate to remove. Thus, removing trend and weekly seasonality allowed us to capture the model better. As a result, we had the plots for the residual series (errors) as well as the ACF/PACF below.
+
+```{r results = "hide", echo= FALSE}
+# Create time series using Splines
+SP500_SPLINES_TS <- predict(SP500_SPLINES)
+
+# Detrend 
+SP500_detrended <- SP500 %>%
+  mutate(Trend = SP500_SPLINES_TS) %>%
+  mutate(Residuals = Adj.Close - Trend)
+
+#Capture seasonality 
+lm.season <- lm(Residuals ~ factor(Weekday) , data = SP500_detrended)
+```
+
+
+```{r results = "hide", echo = FALSE}
+error1 <- lm.season$resid
+plot(error1, type = 'l', main = "Figure 4: Estimated Residuals with estimating approach", ylab = "Residuals")
+acf(error1, main = "Figure 5: Autocorrelation of estimated residuals" )
+pacf(error1, main = "Figure 6: Partial autocorrelation of estimated residuals"  )
+```
+
+Another approach to create stationary errors is using the differencing method. The plot represents the residual series as well as ACF/ PACF of the errors. Differencing the data is a more straightforward, quicker process than removing trend and seasonality through methods such as loess, splines, or moving average. However, since it is too simple, the trend and seasonality captured might not be as accurate as before. The differencing method probably did not take into consideration of variabilities in the data. Financial data tend to be more complicated, and there might not be seasonality at all. 
+
+```{r results = "hide", echo = FALSE}
+#Differencing removing trend
+trend_diff <- diff(SP500$Adj.Close, lag = 1)
+
+season_diff <- diff(diff(SP500$Adj.Close, lag = 1), lag = 12) 
+
+#Stationary errors with differencing from removing seasonality
+error3 <- season_diff
+plot(error3, type = 'l', main = "Figure 7: Estimated Residuals with differencing approach", ylab = "Residuals")
+acf(error3, main = "Figure 8: Autocorrelation of estimated residuals")
+pacf(error3, main = "Figure 9: Partial autocorrelation of estimated residuals" )
+```
+
+ By fitting the candidate models for both series (errors from differencing and errors from estimating/removing) and comparing them, we can justify the choice of one model over the other models. For estimating approach: After trying a different number of AR models, we observe that as the p higher, the AIC & BIC results are lower. However, it seems that the p-values are very low, which indicates there are some drawbacks within our model. For this study, AR(10) as the best model for the estimating approach due to the BIC & AIC results. For the differencing approach: After fitting MA(1) & MA(2) models, the MA(2) model has a lower BIC & AIC results. Thus, it can be a better candidate for this approach. We also have tried to include models with using P, D, Q, S, but the results of BIC & AIC did not change much. Additionally, with more parameters, it is not worth to include those models.
+ 
+```{r results = "hide", echo = FALSE}
+#Fit AR(10) for estimating approach
+est_ar10 <- sarima (error1, p =10, d=0, q=0)
+est_ar10
+
+# Fit MA(2) for differencing approach
+diff_ma2 <- sarima(error3, p=0, d =0, q=2)
+diff_ma2
+```
+
+With the use of AR(10) model, we process to make the prediction of S&P 500 index in the following three months. Taking into account of weekends and weekdays, we observe an increasing linear trend in the prediction. With the prediction of the next 92 days, it is increasing at a linear trend due to the degree 1 – polynomial linear Splines model. With the assumption of a linear relationship, this is a drawback to this prediction since financial data has a high vitality characteristic, and it is probably not a linear trend in that period.
+
+```{r results = "hide", echo = FALSE}
+trend_mod <- lm(Adj.Close ~ Open + bs(dec_date, degree = 1, knots = c(date1, date2, date3, date4), Boundary.knots = c(2000.008, 2019.992)):Open + factor(Month), data = SP500)
+X = model.matrix(trend_mod)[,-1]
+
+final_mod <- sarima(SP500$Adj.Close, p=10, d=0, q=0, xreg=X)
+final_mod
+```
+
+```{r results = "hide", cache = TRUE}
+L = levels(factor(SP500$Month))
+
+newdat = data.frame(Date = seq(from=as.Date("2019-09-28"), to=as.Date("2019-12-28"), by="day"))
+
+newdat <- newdat %>%
+  mutate(Weekday  = wday(Date)) %>%
+  mutate(Month = factor(month(Date), L)) %>%
+  mutate(Open = ifelse(Weekday %in% c(7,1), 0, 1)) %>%
+  mutate(Year = year(Date), Yearday = yday(Date)) %>%
+  mutate(dec_date = Year + Yearday/365)
+
+newX <- model.matrix(~ Open + bs(dec_date, degree = 1, knots = c(date1, date2, date3, date4), Boundary.knots = c(2000.008, 2019.992)):Open + Month, data = newdat)[,-1]
+
+SP500_forecast <- sarima.for(SP500$Adj.Close, p=10, d=0, q=0, xreg = X, newxreg=newX, n.ahead=92)
+```
+
+
+## V. Limitations
+
+When dealing with financial data, we come with a common restriction for time series estimations. Given that markets are not always open, there is a discontinuity in the data that we have to deal with before we can start our time series analysis. This comes with great challenges, what do we do with those days that the stock market was closed? In our project, many different techniques were used to try and solve the discontinuity but we came with challenges. First, we tried filling the value of the SP500 using the value of the previous week. Intuitively, it makes sense to do this as the value of the SP500 remains constant when the stock market is closed. But it comes with a lot of issues when looking at time-series data, as we end up having perfect correlation between the last day the stock market was open and the adjacent close days. This is problematic when doing our analysis because it can make our errors correlated with each other. Given that the whole purpose of using SARIMA, ARIMA, AR, and MA models is to model random independent noise, filling the values of missing data using previous values can hinder the modeling process. The same could have happened if we had just put 0’s in the days the stock market was not open. 
+
+This is why we randomly generated values for days the stock market was closed. We filled the values using random values with mean 1 and standard deviation of 5. The intuition behind those numbers is that we wanted to have recognizable values so that we can acknowledge that those days were in fact outliers. But there are better options than assigning random values to the days the stock market is closed, our team suggests future researchers to use other mechanisms to fill the values on close days, or use weekly/ monthly data as other researchers have done. 
+
+Another issue that we have with financial data, is that during upturns, the variability of the values in the S&P500 tends to be small, as investors are cautious of the future. But during downturns, we see huge variability in the values in the S&P500, mainly due to sentiment and desperation. The differences in variability during financial crashes and growth periods give us a hard time to be able to effectively capture both trends and seasonality in the data.
+
+During our model selection process to capture the trend, we decided to use linear splines to capture the trend even though there were some non-linear trends in between splines. Although our intuition was to be able to model the simplest model, given our linearity constraints it is highly likely we did not fully capture the trend in our data. Also, we weren't able to find any seasonal relationships in our data, but there might be some seasonal relationships in the data that we had not accounted for. 
+
+
+## VI. Conclusion
+
+Forecasting the health of the US Markets is a very important for foreign investors and economists. It helps many stakeholders in the economy make crucial decisions regarding the changing landscapes of the economy. Our research project attempts to predict the future value of the S&P 500 using ARIMA models. The ARIMA model, specifically AR(10), was used to estimate the errors of our time series. And after accounting  for trends, we were able to use these estimates to predict future values of the S&P 500.  
+
+We selected the models that best fit the residuals using estimating approach, and rigorous visualization analysis. Using our predictions from the AR model we can see that there is a positive linear trend in the adjusted close price of the S&P500 in the next 90 days. In other words we do not expect major fluctuations or decreases in the price of the S&P500. This conclusion was bound to happen due to the nature of how we captured the trend using splines. 
+
+However, due to the nature of financial data, our results must be taken with a grain of salt as the S&P 500 is highly unpredictable. As a result, we expect our predictions to be highly unlikely given the limitations described above and the unpredictability of financial markets. 
+
+## Acknowledgements
+
+We would like to thank our teacher Prof. Brianna Heggeseth and the MSCS department of Macalester College.
+
+
+
+## References
+@oonides
+@fattah_ezzine_aman_moussami_lachhab
+@eulogio
+
+
